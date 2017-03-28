@@ -32,13 +32,15 @@
         };
     }
 
-    function sendAzureRayTraceRequest(traceRayUrl, traceJob, renderLine) {
+    function sendAzureRayTraceRequest(traceRayUrl, traceJob, renderLine, error) {
         var xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = function () {
-            if (this.readyState == 4 && this.status == 200) {
+            if (xhttp.readyState === XMLHttpRequest.DONE && xhttp.status === 200) {
                 var rayTracedLine = JSON.parse(this.responseText);
                 renderLine(rayTracedLine.line, rayTracedLine.imageData);
 
+            } else if(xhttp.readyState == XMLHttpRequest.DONE && xhttp.status > 200){
+                error();
             }
         };
         xhttp.open('POST', traceRayUrl, true);
@@ -148,14 +150,23 @@
         writeStatus("Starting rendering using Azure Functions");
         rendered = 0;
         for (var y = world.height - 1; y >= 0; y--) {
+
             var traceJob = {
                 camera: camera,
                 spheres: spheres,
                 width: world.width,
                 height: world.height,
-                line: y
+                line: y,
+                retries : 0
             };
-            sendAzureRayTraceRequest(traceRayUrl, traceJob, displayRenderedData);
+            sendAzureRayTraceRequest(traceRayUrl, traceJob, displayRenderedData, function () {
+                if(traceJob.retries < 3){
+                    sendAzureRayTraceRequest(traceRayUrl, traceJob,displayRenderedData,this);
+                    traceJob.retries +=1;
+                } else {
+                    console.log('could not render', traceJob.line);
+                }
+            });
         }
     }
     main();
