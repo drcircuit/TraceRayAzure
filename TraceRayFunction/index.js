@@ -1,6 +1,3 @@
-/**
- * Created by Espen on 3/28/2017.
- */
 module.exports = function (context, req) {
     var ray = require('./ray');
     var vector = require('./vector');
@@ -8,103 +5,18 @@ module.exports = function (context, req) {
     var metal = require('./metalShader')(ray, randUnitSphere);
     var diffuse = require('./diffuseShader')(ray, randUnitSphere);
     var camera = require('./camera')(ray);
-
-
-    function color(rayToTrace, world, depth) {
-        var t       = 0.0;
-        var closest = 12345678910110.1;
-        var surface = {};
-        var rec;
-        if(!depth){
-            depth = 0;
-        }
-        if (world.forEach) {
-            world.forEach(function (surf) {
-                var h = surf.hit(rayToTrace, 0.001, closest);
-                if (h.hit) {
-                    t       = h.t;
-                    closest = h.t;
-                    surface = surf;
-                    rec     = h;
-                }
-            });
-        } else {
-            var h   = world.hit(rayToTrace, 0.001, closest);
-            surface = world;
-            t       = h.t;
-            rec     = h;
-        }
-        if (t > 0.0) {
-            //var n = rec.r.add(rec.normal).add(randUnitSphere());
-            //var n = unitOfVector(ray.pointAt(t).subtract(surface.center));
-            var c = surface.material.scatter(rayToTrace, rec);
-            if(c.hit && depth < 50){
-                return color(c.scattered, world, depth++).multiply(c.attenuation);
-            }
-        }
-        var unitdir = rayToTrace.direction.unitOf();
-        t           = 0.5 * unitdir.y + 1.0;
-        return vector(1.0, 1.0, 1.0).multiply(1.0 - t).add(vector(0.5, 0.7, 1.0).multiply(t));
-    }
-
-
-
-    function sphereSurface(center, radius, material) {
-
-        return {
-            center: center,
-            radius: radius,
-            material: material,
-            hit: function (ray, tmin, tmax) {
-                var oc    = ray.origin.subtract(center);
-                var a     = ray.direction.dotmul(ray.direction);
-                var b     = ray.direction.dotmul(oc);
-                var c     = oc.dotmul(oc) - radius * radius;
-                var limit = b * b - a * c;
-                if (limit < 0) {
-                    return {
-                        t: 0.0,
-                        hit: false
-                    };
-                }
-
-                var temp = (-b - Math.sqrt(limit)) / a;
-                var r    = ray.pointAt(temp);
-                if (temp < tmax && temp > tmin) {
-                    return {
-                        hit: true,
-                        t: temp,
-                        r: r,
-                        normal: r.subtract(center).divide(radius)
-                    }
-                }
-                temp = (-b + Math.sqrt(limit)) / a;
-                r    = ray.pointAt(temp);
-                if (temp < tmax && temp > tmin) {
-                    return {
-                        hit: true,
-                        t: temp,
-                        r: r,
-                        normal: r.subtract(center).divide(radius)
-                    }
-                }
-                return {
-                    t: -1.0,
-                    hit: false
-                };
-            }
-        }
-    }
-
-
+    var sphereSurface = require('./sphere');
+    var color = require('./colorRenderer')(vector);
 
     function createVector(vectorModel){
         context.log(vectorModel);
         return vector(vectorModel.x, vectorModel.y, vectorModel.z);
     }
+
     function createCamera(cameraModel){
         return camera(createVector(cameraModel.lowerCorner),createVector(cameraModel.horizontal),createVector(cameraModel.vertical),createVector(cameraModel.origin));
     }
+
     function createSphere(sphereModel){
         var material = diffuse(createVector(sphereModel.material.color));
         if(sphereModel.material.type == 'metal'){
