@@ -1,2 +1,2 @@
 # TraceRayAzure
-A raytracing engine running as an Azure Function
+A ray tracing engine running as an Azure Function
